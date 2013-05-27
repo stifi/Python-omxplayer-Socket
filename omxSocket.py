@@ -47,6 +47,7 @@ LDPATH = "/opt/vc/lib:/usr/lib/omxplayer"
 
 QUIT_CMD = 'q'
 PAUSE_CMD = 'p'
+TOGGLE_SUBS_CMD = 's'
 FORWARD_BIT_CMD = "\033[C"
 FORWARD_LOT_CMD = "\033[A"
 REWIND_BIT_CMD = "\033[D"
@@ -144,6 +145,10 @@ class omxPlayerSocket():
         
                     if msg == 'rewind_lot':
                         omxProcess.send(REWIND_LOT_CMD)
+
+                    if msg == 'toggle_subs':
+                        omxProcess.send(TOGGLE_SUBS_CMD)
+
                 else:
                     self.status = {'playing': False}
         
