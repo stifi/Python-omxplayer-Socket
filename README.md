@@ -12,6 +12,6 @@ Example Client usage:
     omxSocket.send('forward_bit')
     omxSocket.send('status')
     playing = omxSocket.recv(1024)
-    if playing == 'True':
+    if playing[0:4] == 'True':
        omxSocket.send('stop')
     omxSocket.close()
