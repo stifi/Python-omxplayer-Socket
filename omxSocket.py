@@ -19,18 +19,18 @@
         address = ('', 23000)
         omxSocket = socket.socket( socket.AF_INET, socket.SOCK_DGRAM )
         omxSocket.connect(address)
-        omxSocket.send('play /path/to/movie/movie.mkv')
+        omxSocket.send('play /path/to/movie/movie.mkv omxsound=hdmi')
         omxSocket.send('forward_bit')
         omxSocket.send('status')
         playing = omxSocket.recv(1024)
-        if playing == 'True':
+        if playing[0:4] == 'True':
            omxSocket.send('stop')
         omxSocket.close()
      
 """
 
-__author__ = "Stefan Gruber"
-__version__ = "0.1alpha"
+__author__ = "Stefan Gansinger"
+__version__ = "0.2"
 __email__ = "stifi.s@freenet.de"
 __credits__ = ["Robin Rawson-Tetley", "Johannes Baiter", "JugglerLKR"]
 
@@ -42,7 +42,8 @@ import socket
 import sys
 from pipes import quote
 
-OMXPLAYER = "/usr/bin/omxplayer.bin"
+# OMXPLAYER = "/usr/bin/omxplayer.bin"
+OMXPLAYER = "/usr/bin/omxplayer"
 LDPATH = "/opt/vc/lib:/usr/lib/omxplayer"
 
 QUIT_CMD = 'q'
@@ -59,6 +60,7 @@ class omxPlayerSocket():
     def __init__(self, address = ('', 23000)):
         self.omxSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.status = {'playing': False}
+        self.playUrl = ""
         try:
             self.omxSocket.bind(address)
         except socket.error, msg:
@@ -97,25 +99,29 @@ class omxPlayerSocket():
                         # nothing to kill
                         pass
                 if 'status' in msg:
-                    self.omxSocket.sendto(str(self.status['playing']),clientAddr)
+                    if self.status['playing'] == True:
+                        self.omxSocket.sendto(str(self.status['playing']) + self.playUrl,clientAddr)
+                    else:
+                        self.omxSocket.sendto(str(self.status['playing']),clientAddr)
 
                 if 'play' in msg:
-                    playUrl = msg.strip('play')
-                    playUrl = playUrl.lstrip()
+                    self.playUrl = msg[len('play '):]
+                    self.playUrl = self.playUrl[0:self.playUrl.rfind("omxsound")-1]
+                    sound=msg[msg.rfind("omxsound=")+9:]
                     msg = ""
-                    cmd = [OMXPLAYER,"-r","-o","hdmi",quote(playUrl)]
+                    cmd = [OMXPLAYER,"-r","-o",sound,quote(self.playUrl)]
                     
                     try:
                         omxProcess
                     except NameError:
                         # no omxProcess created so far
-                        # print("play: " + playUrl)
+                        # print("play: " + self.playUrl)
                         omxProcess = pexpect.spawn(' '.join(cmd), env = {"LD_LIBRARY_PATH" : LDPATH})
                         self.status = {'playing': True}
                     else:
                         # only play if not already    
                         if not omxProcess.isalive():
-                            # print("play: " + playUrl)
+                            # print("play: " + self.playUrl)
                             omxProcess = pexpect.spawn(' '.join(cmd), env = {"LD_LIBRARY_PATH" : LDPATH})
                             self.status = {'playing': True}
         
@@ -133,6 +139,7 @@ class omxPlayerSocket():
                     if msg == 'stop':
                         omxProcess.send(QUIT_CMD)
                         omxProcess.wait() 
+                        self.status = {'playing': False}
         
                     if msg == 'forward_bit':
                         omxProcess.send(FORWARD_BIT_CMD)
@@ -148,7 +155,6 @@ class omxPlayerSocket():
 
                     if msg == 'toggle_subs':
                         omxProcess.send(TOGGLE_SUBS_CMD)
-
                 else:
                     self.status = {'playing': False}
         
