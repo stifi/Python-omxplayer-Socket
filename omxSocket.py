@@ -30,7 +30,7 @@
 """
 
 __author__ = "Stefan Gansinger"
-__version__ = "0.2"
+__version__ = "1.0"
 __email__ = "stifi.s@freenet.de"
 __credits__ = ["Robin Rawson-Tetley", "Johannes Baiter", "JugglerLKR"]
 
@@ -106,8 +106,12 @@ class omxPlayerSocket():
 
                 if 'play' in msg:
                     self.playUrl = msg[len('play '):]
-                    self.playUrl = self.playUrl[0:self.playUrl.rfind("omxsound")-1]
-                    sound=msg[msg.rfind("omxsound=")+9:]
+                    try:
+                        self.playUrl = self.playUrl[0:self.playUrl.rindex("omxsound")-1]
+                        sound=msg[msg.rindex("omxsound=")+9:]
+                    except ValueError:
+                        # no sound information in play string
+                        sound="hdmi"
                     msg = ""
                     cmd = [OMXPLAYER,"-r","-o",sound,quote(self.playUrl)]
                     
@@ -115,13 +119,11 @@ class omxPlayerSocket():
                         omxProcess
                     except NameError:
                         # no omxProcess created so far
-                        # print("play: " + self.playUrl)
                         omxProcess = pexpect.spawn(' '.join(cmd), env = {"LD_LIBRARY_PATH" : LDPATH})
                         self.status = {'playing': True}
                     else:
                         # only play if not already    
                         if not omxProcess.isalive():
-                            # print("play: " + self.playUrl)
                             omxProcess = pexpect.spawn(' '.join(cmd), env = {"LD_LIBRARY_PATH" : LDPATH})
                             self.status = {'playing': True}
         
@@ -155,6 +157,10 @@ class omxPlayerSocket():
 
                     if msg == 'toggle_subs':
                         omxProcess.send(TOGGLE_SUBS_CMD)
+
+                    if 'custom_cmd:' in msg:
+                        # use this with caution
+                        omxProcess.send(msg[len('custom_cmd:'):])
                 else:
                     self.status = {'playing': False}
         
